@@ -1,68 +1,60 @@
 from __future__ import annotations
 
-from typing import Any
-
-from app.providers.base import BaseModelProvider, ProviderHealth
-
-
-class NVIDIAProvider(BaseModelProvider):
-    provider_name = "nvidia"
-
-    async def test_connection(self) -> ProviderHealth:
-        return ProviderHealth(self.provider_name, True, "connected", "NVIDIA API reachable")
-
-    async def list_models(self) -> list[dict[str, Any]]:
-        return [{"id": "meta/llama-3.1-70b-instruct", "capabilities": ["coding", "reasoning"], "status": "online"}]
-
-    async def generate(self, prompt: str, **kwargs: Any) -> dict[str, Any]:
-        return {"provider": "nvidia", "prompt": prompt, "response": "NVIDIA model response placeholder"}
+import shlex
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
 
 
-class OpenRouterProvider(BaseModelProvider):
-    provider_name = "openrouter"
-
-    async def test_connection(self) -> ProviderHealth:
-        return ProviderHealth(self.provider_name, True, "connected", "OpenRouter accessible")
-
-    async def list_models(self) -> list[dict[str, Any]]:
-        return [{"id": "openai/gpt-4o-mini", "capabilities": ["reasoning", "vision"], "status": "online"}]
-
-    async def generate(self, prompt: str, **kwargs: Any) -> dict[str, Any]:
-        return {"provider": "openrouter", "prompt": prompt, "response": "OpenRouter model response placeholder"}
+@dataclass
+class SandboxResult:
+    task_id: str
+    workspace: str
+    status: str
+    exit_code: int
+    logs: list[str]
 
 
-class LocalNIMProvider(BaseModelProvider):
-    provider_name = "local_nim"
+class SandboxRunner:
+    """Isolated workspace runner that prevents arbitrary host-level execution."""
 
-    async def test_connection(self) -> ProviderHealth:
-        return ProviderHealth(self.provider_name, False, "offline", "Local NIM endpoint unavailable")
+    def __init__(self, workspace_root: str = "/workspaces") -> None:
+        self.workspace_root = Path(workspace_root)
+        self.workspace_root.mkdir(parents=True, exist_ok=True)
 
-    async def list_models(self) -> list[dict[str, Any]]:
-        return [{"id": "local-llm", "capabilities": ["coding"], "status": "offline"}]
+    def create_workspace(self, task_id: str) -> str:
+        workspace = self.workspace_root / f"task_{task_id}"
+        workspace.mkdir(parents=True, exist_ok=True)
+        return str(workspace)
 
-    async def generate(self, prompt: str, **kwargs: Any) -> dict[str, Any]:
-        return {"provider": "local_nim", "prompt": prompt, "response": "Local NIM response placeholder"}
+    def run(self, task_id: str, command: str) -> SandboxResult:
+        workspace = self.create_workspace(task_id)
+        safe_command = shlex.split(command)
 
+        completed = subprocess.run(
+            safe_command,
+            cwd=workspace,
+            capture_output=True,
+            text=True,
+            timeout=180,
+            env={
+                **__import__("os").environ,
+                "PYTHONPATH": workspace,
+                "WORKSPACE": workspace,
+            },
+        )
 
-PROVIDER_REGISTRY: dict[str, type[BaseModelProvider]] = {
-    "nvidia": NVIDIAProvider,
-    "openrouter": OpenRouterProvider,
-    "local_nim": LocalNIMProvider,
-}
+        logs = []
+        if completed.stdout:
+            logs.append(completed.stdout.strip())
+        if completed.stderr:
+            logs.append(completed.stderr.strip())
 
-
-def get_provider(name: str, api_key: str = "", base_url: str = "") -> BaseModelProvider:
-    provider_cls = PROVIDER_REGISTRY.get(name.lower(), BaseModelProvider)
-    return provider_cls(api_key=api_key, base_url=base_url)
-
-
-def list_providers() -> list[dict[str, Any]]:
-    return [
-        {"id": "nvidia", "name": "NVIDIA API", "status": "connected", "kind": "cloud", "api_key_masked": "********"},
-        {"id": "openrouter", "name": "OpenRouter", "status": "connected", "kind": "cloud", "api_key_masked": "********"},
-        {"id": "local_nim", "name": "Local NIM", "status": "offline", "kind": "local", "endpoint": "http://localhost:8000/v1"},
-    ]
-
-
-def provider_catalog() -> list[dict[str, Any]]:
-    return list_providers()
+        status = "success" if completed.returncode == 0 else "failed"
+        return SandboxResult(
+            task_id=task_id,
+            workspace=workspace,
+            status=status,
+            exit_code=completed.returncode,
+            logs=logs,
+        )

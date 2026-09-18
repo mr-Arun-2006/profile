@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.agents.registry import list_agents
-from app.providers.registry import get_provider, list_providers
+from app.github.gateway import GitHubGateway
 from app.orchestrator.planner import create_default_plan
 from app.orchestrator.runtime import task_store
+from app.providers.registry import get_provider, list_providers
+from app.sandbox.runner import SandboxRunner
+from app.security.policies import PolicyEngine
 
 
 class TaskCreateRequest(BaseModel):
@@ -26,6 +31,10 @@ class ModelCreateRequest(BaseModel):
     capabilities: list[str] = Field(default_factory=list)
     enabled: bool = True
 
+
+github_gateway = GitHubGateway()
+policy_engine = PolicyEngine()
+sandbox_runner = SandboxRunner(workspace_root="/workspaces")
 
 app = FastAPI(title="AI Forge API")
 
@@ -143,6 +152,7 @@ def tasks() -> list[dict[str, Any]]:
 @app.post("/api/tasks")
 def create_task(payload: TaskCreateRequest) -> dict[str, Any]:
     task = task_store.create_task(payload.title, payload.prompt, payload.mode)
+    task_store.add_event(task.id, "AGENT_STARTED", {"agent": "planner"})
     return {
         "id": task.id,
         "title": task.title,
@@ -190,9 +200,50 @@ def get_task_events(task_id: str) -> list[dict[str, Any]]:
     ]
 
 
+@app.get("/api/tasks/{task_id}/stream")
+async def stream_task_events(task_id: str):
+    async def event_generator():
+        for event in task_store.get_events(task_id):
+            payload = {
+                "task_id": event.task_id,
+                "event": event.event,
+                "timestamp": event.timestamp.isoformat(),
+                "details": event.details,
+            }
+            yield f"event: {event.event}\ndata: {json.dumps(payload)}\n\n"
+        yield "event: heartbeat\ndata: {}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@app.post("/api/tasks/{task_id}/approve")
+def approve_task(task_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    task = task_store.get_task(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    decision = policy_engine.authorize("user", payload.get("action", "create_pull_request"), {"approved": True})
+    if not decision.allowed:
+        raise HTTPException(status_code=403, detail=decision.reason)
+
+    task_store.set_task_status(task_id, "APPROVAL_REQUIRED")
+    task_store.add_event(task_id, "APPROVED", {"action": payload.get("action", "create_pull_request")})
+    return {"id": task_id, "status": task.status, "approved": True}
+
+
 @app.get("/api/github/repositories")
 def github_repositories() -> list[str]:
-    return ["mr-Arun/project-a", "mr-Arun/project-b", "organization/project-c"]
+    return github_gateway.list_repositories()
+
+
+@app.post("/api/github/connect")
+def github_connect() -> dict[str, Any]:
+    return {"status": "connected", "provider": "github_app", "repositories": github_gateway.list_repositories()}
+
+
+@app.post("/api/github/disconnect")
+def github_disconnect() -> dict[str, Any]:
+    return {"status": "disconnected", "provider": "github_app"}
 
 
 @app.get("/api/prompts")
@@ -228,3 +279,24 @@ def audit() -> list[dict[str, Any]]:
 @app.get("/api/tasks/default-plan")
 def default_plan() -> dict[str, Any]:
     return {"plan": create_default_plan()}
+
+
+@app.post("/api/sandbox/create")
+def create_sandbox(payload: dict[str, Any]) -> dict[str, Any]:
+    task_id = str(payload.get("task_id", "sandbox_demo"))
+    workspace = sandbox_runner.create_workspace(task_id)
+    return {"task_id": task_id, "workspace": workspace, "status": "ready"}
+
+
+@app.post("/api/sandbox/run")
+def run_sandbox(payload: dict[str, Any]) -> dict[str, Any]:
+    task_id = str(payload.get("task_id", "sandbox_demo"))
+    command = str(payload.get("command", "pwd"))
+    result = sandbox_runner.run(task_id, command)
+    return {
+        "task_id": result.task_id,
+        "workspace": result.workspace,
+        "status": result.status,
+        "exit_code": result.exit_code,
+        "logs": result.logs,
+    }

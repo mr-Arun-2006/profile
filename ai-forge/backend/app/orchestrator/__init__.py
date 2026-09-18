@@ -26,7 +26,7 @@ class TaskEvent:
 
 
 class InMemoryTaskStore:
-    """Simple in-memory store for task lifecycle and event history."""
+    """In-memory task state and event stream for orchestration workflows."""
 
     def __init__(self) -> None:
         self.tasks: dict[str, TaskRecord] = {}
@@ -48,7 +48,14 @@ class InMemoryTaskStore:
             "Request approval",
             "Create PR",
         ]
-        task = TaskRecord(id=task_id, title=title, status="CREATED", mode=mode, user_prompt=prompt, plan=plan)
+        task = TaskRecord(
+            id=task_id,
+            title=title,
+            status="CREATED",
+            mode=mode,
+            user_prompt=prompt,
+            plan=plan,
+        )
         self.tasks[task_id] = task
         self.events[task_id] = []
         self.add_event(task_id, "TASK_CREATED", {"title": title, "mode": mode})
@@ -56,9 +63,9 @@ class InMemoryTaskStore:
         return task
 
     def add_event(self, task_id: str, event: str, details: dict[str, Any] | None = None) -> TaskEvent:
-        task_event = TaskEvent(task_id=task_id, event=event, timestamp=datetime.now(timezone.utc), details=details)
-        self.events.setdefault(task_id, []).append(task_event)
-        return task_event
+        event_record = TaskEvent(task_id=task_id, event=event, timestamp=datetime.now(timezone.utc), details=details)
+        self.events.setdefault(task_id, []).append(event_record)
+        return event_record
 
     def get_task(self, task_id: str) -> TaskRecord | None:
         return self.tasks.get(task_id)
@@ -80,6 +87,9 @@ class InMemoryTaskStore:
 
     def stop_task(self, task_id: str) -> TaskRecord | None:
         return self.set_task_status(task_id, "CANCELLED")
+
+    def add_step(self, task_id: str, step_name: str, status: str = "RUNNING", details: str | None = None) -> None:
+        self.add_event(task_id, "STEP_CHANGED", {"step": step_name, "status": status, "details": details})
 
 
 task_store = InMemoryTaskStore()
