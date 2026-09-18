@@ -1,26 +1,33 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+from fastapi.testclient import TestClient
 
-:root {
-  font-family: 'Inter', 'Segoe UI', sans-serif;
-  color: #e2e8f0;
-  background: #020817;
-}
+from app.main import app
 
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at top, rgba(34, 197, 94, 0.12), transparent 30%),
-    linear-gradient(180deg, #020817 0%, #0f172a 100%);
-}
 
-* {
-  box-sizing: border-box;
-}
+client = TestClient(app)
 
-button, input, textarea, select {
-  font: inherit;
-}
+
+def test_health() -> None:
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+
+
+def test_agents() -> None:
+    response = client.get("/api/agents")
+    assert response.status_code == 200
+    assert len(response.json()) >= 3
+
+
+def test_create_task() -> None:
+    payload = {
+        "title": "Diagnose auth flow",
+        "prompt": "Analyze the repository and fix the authentication issue.",
+        "mode": "assisted",
+    }
+    response = client.post("/api/tasks", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["title"] == payload["title"]
+    assert data["status"] == "CREATED"
+    assert isinstance(data["plan"], list)
+    assert len(data["plan"]) > 0

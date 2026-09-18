@@ -1,59 +1,85 @@
 from __future__ import annotations
 
-from app.providers.base import BaseModelProvider, ProviderHealth
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from typing import Any
 
 
-class NVIDIAProvider(BaseModelProvider):
-    provider_name = "nvidia"
-
-    async def test_connection(self) -> ProviderHealth:
-        return ProviderHealth(self.provider_name, True, "connected", "NVIDIA API reachable")
-
-    async def list_models(self) -> list[dict]:
-        return [{"id": "meta/llama-3.1-70b-instruct", "capabilities": ["coding", "reasoning"]}]
-
-    async def generate(self, prompt: str, **kwargs) -> dict:
-        return {"provider": "nvidia", "prompt": prompt, "response": "NVIDIA model response placeholder"}
-
-
-class OpenRouterProvider(BaseModelProvider):
-    provider_name = "openrouter"
-
-    async def test_connection(self) -> ProviderHealth:
-        return ProviderHealth(self.provider_name, True, "connected", "OpenRouter accessible")
-
-    async def list_models(self) -> list[dict]:
-        return [{"id": "openai/gpt-4o-mini", "capabilities": ["reasoning", "vision"]}]
-
-    async def generate(self, prompt: str, **kwargs) -> dict:
-        return {"provider": "openrouter", "prompt": prompt, "response": "OpenRouter model response placeholder"}
+@dataclass
+class TaskRecord:
+    id: str
+    title: str
+    status: str = "CREATED"
+    mode: str = "assisted"
+    user_prompt: str = ""
+    plan: list[str] = field(default_factory=list)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
-class LocalNIMProvider(BaseModelProvider):
-    provider_name = "local_nim"
-
-    async def test_connection(self) -> ProviderHealth:
-        return ProviderHealth(self.provider_name, False, "offline", "Local NIM endpoint unavailable")
-
-    async def list_models(self) -> list[dict]:
-        return [{"id": "local-llm", "capabilities": ["coding"]}]
-
-    async def generate(self, prompt: str, **kwargs) -> dict:
-        return {"provider": "local_nim", "prompt": prompt, "response": "Local NIM response placeholder"}
+@dataclass
+class TaskEvent:
+    task_id: str
+    event: str
+    timestamp: datetime
+    details: dict[str, Any] | None = None
 
 
-def get_provider(name: str, api_key: str = "", base_url: str = "") -> BaseModelProvider:
-    providers = {
-        "nvidia": NVIDIAProvider(api_key=api_key, base_url=base_url),
-        "openrouter": OpenRouterProvider(api_key=api_key, base_url=base_url),
-        "local_nim": LocalNIMProvider(api_key=api_key, base_url=base_url),
-    }
-    return providers.get(name.lower(), BaseModelProvider(api_key=api_key, base_url=base_url))
+class InMemoryTaskStore:
+    """Simple in-memory store for task lifecycle and event history."""
+
+    def __init__(self) -> None:
+        self.tasks: dict[str, TaskRecord] = {}
+        self.events: dict[str, list[TaskEvent]] = {}
+
+    def create_task(self, title: str, prompt: str, mode: str = "assisted") -> TaskRecord:
+        from uuid import uuid4
+
+        task_id = f"task_{uuid4().hex[:8]}"
+        plan = [
+            "Connect repository",
+            "Analyze repository",
+            "Detect authentication issue",
+            "Fix backend",
+            "Improve frontend",
+            "Run tests",
+            "Run security checks",
+            "Review changes",
+            "Request approval",
+            "Create PR",
+        ]
+        task = TaskRecord(id=task_id, title=title, status="CREATED", mode=mode, user_prompt=prompt, plan=plan)
+        self.tasks[task_id] = task
+        self.events[task_id] = []
+        self.add_event(task_id, "TASK_CREATED", {"title": title, "mode": mode})
+        self.add_event(task_id, "PLAN_CREATED", {"plan": plan})
+        return task
+
+    def add_event(self, task_id: str, event: str, details: dict[str, Any] | None = None) -> TaskEvent:
+        task_event = TaskEvent(task_id=task_id, event=event, timestamp=datetime.now(timezone.utc), details=details)
+        self.events.setdefault(task_id, []).append(task_event)
+        return task_event
+
+    def get_task(self, task_id: str) -> TaskRecord | None:
+        return self.tasks.get(task_id)
+
+    def list_tasks(self) -> list[TaskRecord]:
+        return list(self.tasks.values())
+
+    def get_events(self, task_id: str) -> list[TaskEvent]:
+        return list(self.events.get(task_id, []))
+
+    def set_task_status(self, task_id: str, status: str) -> TaskRecord | None:
+        task = self.tasks.get(task_id)
+        if task is None:
+            return None
+        task.status = status
+        task.updated_at = datetime.now(timezone.utc)
+        self.add_event(task_id, "STATUS_UPDATED", {"status": status})
+        return task
+
+    def stop_task(self, task_id: str) -> TaskRecord | None:
+        return self.set_task_status(task_id, "CANCELLED")
 
 
-def list_providers() -> list[dict]:
-    return [
-        {"id": "nvidia", "name": "NVIDIA API", "status": "connected", "kind": "cloud"},
-        {"id": "openrouter", "name": "OpenRouter", "status": "connected", "kind": "cloud"},
-        {"id": "local_nim", "name": "Local NIM", "status": "offline", "kind": "local"},
-    ]
+task_store = InMemoryTaskStore()

@@ -1,10 +1,250 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-import './index.css';
+import { Activity, Bot, Cpu, Github, LayoutDashboard, Server, ShieldCheck, Sparkles, TestTube, Zap } from 'lucide-react';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+const navItems = [
+  { label: 'Dashboard', icon: LayoutDashboard, active: true },
+  { label: 'Tasks', icon: Activity },
+  { label: 'Agents', icon: Bot },
+  { label: 'Models', icon: Cpu },
+  { label: 'GitHub', icon: Github },
+  { label: 'Security', icon: ShieldCheck },
+  { label: 'Testing', icon: TestTube },
+];
+
+const taskMetrics = [
+  { label: 'Requests today', value: '1,248' },
+  { label: 'Tokens used', value: '184K' },
+  { label: 'Avg latency', value: '1.14s' },
+  { label: 'Success rate', value: '96.3%' },
+];
+
+const providerCards = [
+  { name: 'NVIDIA API', status: 'Connected', tone: 'green' },
+  { name: 'OpenRouter', status: 'Connected', tone: 'green' },
+  { name: 'Local NIM', status: 'Offline', tone: 'amber' },
+];
+
+const taskTimeline = [
+  { label: 'Planner', status: 'Completed' },
+  { label: 'GitHub', status: 'Completed' },
+  { label: 'Repository Analysis', status: 'Completed' },
+  { label: 'Backend Agent', status: 'Running' },
+  { label: 'Frontend Agent', status: 'Waiting' },
+  { label: 'Testing Agent', status: 'Waiting' },
+  { label: 'Security Agent', status: 'Waiting' },
+  { label: 'Reviewer', status: 'Waiting' },
+];
+
+const planSteps = [
+  'Connect repository',
+  'Analyze repository',
+  'Detect authentication issue',
+  'Fix backend',
+  'Improve frontend',
+  'Generate UI illustration',
+  'Run tests',
+  'Complete security review',
+  'Prepare pull request',
+];
+
+export default function App() {
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="flex min-h-screen">
+        <aside className="w-72 border-r border-slate-800 bg-slate-900/80 p-5 backdrop-blur-sm">
+          <div className="mb-8 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Platform</p>
+              <h1 className="text-xl font-semibold">AI FORGE</h1>
+            </div>
+          </div>
+
+          <nav className="space-y-2">
+            {navItems.map(({ label, icon: Icon, active }) => (
+              <button
+                key={label}
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
+                  active
+                    ? 'bg-slate-800 text-white ring-1 ring-slate-700'
+                    : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.22em] text-slate-400">
+              <span>Execution</span>
+              <span className="text-emerald-400">Live</span>
+            </div>
+            <div className="space-y-3 text-sm text-slate-300">
+              <div className="flex items-center justify-between">
+                <span>Task state</span>
+                <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-300">RUNNING</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Approval</span>
+                <span className="text-yellow-300">Pending</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Sandbox</span>
+                <span className="text-sky-300">Secure</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <main className="flex-1 p-6">
+          <header className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Task Workspace</p>
+              <h2 className="mt-1 text-2xl font-semibold">Fix authentication system</h2>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-300">
+                <Server className="h-4 w-4 text-emerald-400" />
+                NVIDIA • GitHub
+              </div>
+              <button className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400">
+                START TASK
+              </button>
+            </div>
+          </header>
+
+          <div className="grid gap-6 xl:grid-cols-[1.7fr_0.9fr]">
+            <section className="space-y-6">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+                <label className="mb-3 block text-xs uppercase tracking-[0.22em] text-slate-400">Objective</label>
+                <textarea
+                  className="min-h-[130px] w-full resize-none rounded-xl border border-slate-700 bg-slate-950/80 p-4 text-sm text-slate-200 outline-none ring-0 placeholder:text-slate-500"
+                  defaultValue="Analyze my repository. Find the authentication problem. Fix the backend. Redesign the login page. Generate a professional illustration. Run all tests. Check security. Review the final changes. Create a pull request."
+                />
+              </div>
+
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Live execution timeline</h3>
+                  <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">
+                    4/8 active
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {taskTimeline.map(({ label, status }) => {
+                    const active = status === 'Running';
+                    const done = status === 'Completed';
+                    const waiting = status === 'Waiting';
+
+                    return (
+                      <div key={label} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`inline-block h-2.5 w-2.5 rounded-full ${
+                              done ? 'bg-emerald-400' : active ? 'bg-sky-400 animate-pulse' : 'bg-slate-600'
+                            }`}
+                          />
+                          <span className="text-sm text-slate-200">{label}</span>
+                        </div>
+                        <span
+                          className={`text-xs font-medium ${
+                            done ? 'text-emerald-300' : active ? 'text-sky-300' : waiting ? 'text-slate-400' : 'text-yellow-300'
+                          }`}
+                        >
+                          {status}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Execution plan</h3>
+                  <span className="text-xs uppercase tracking-[0.2em] text-slate-400">Planner</span>
+                </div>
+                <ol className="space-y-2">
+                  {planSteps.map((step, index) => (
+                    <li key={step} className="flex items-start gap-3 rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2">
+                      <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-semibold text-emerald-300">
+                        {index + 1}
+                      </span>
+                      <span className="text-sm text-slate-200">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </section>
+
+            <aside className="space-y-6">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Repository</h3>
+                  <button className="text-xs uppercase tracking-[0.2em] text-sky-300">Open</button>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-sm text-slate-300">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-slate-400">Owner</span>
+                    <span>mr-Arun</span>
+                  </div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-slate-400">Project</span>
+                    <span>profile</span>
+                  </div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-slate-400">Branch</span>
+                    <span>main</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Access</span>
+                    <span className="text-emerald-300">Authenticated</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Model providers</h3>
+                  <Zap className="h-4 w-4 text-amber-300" />
+                </div>
+                <div className="space-y-3">
+                  {providerCards.map(({ name, status, tone }) => (
+                    <div key={name} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+                      <span className="text-sm text-slate-200">{name}</span>
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs ${
+                          tone === 'green'
+                            ? 'bg-emerald-500/10 text-emerald-300'
+                            : 'bg-amber-500/10 text-amber-300'
+                        }`}
+                      >
+                        {status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+                <h3 className="mb-4 text-lg font-semibold">System metrics</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {taskMetrics.map(({ label, value }) => (
+                    <div key={label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                      <div className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</div>
+                      <div className="mt-2 text-xl font-semibold text-slate-100">{value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </aside>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
