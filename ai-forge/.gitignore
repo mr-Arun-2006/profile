@@ -1,0 +1,121 @@
+# AI Forge Architecture Overview
+
+## 1. System objective
+
+AI Forge is designed as a secure local AI orchestration platform that accepts a user task, decomposes it into subtasks, delegates work to specialized agents, selects models by capability/provider, executes work in isolated workspaces, and requires approval for sensitive operations like GitHub PR creation and destructive actions.
+
+## 2. High-level architecture
+
+```text
+User
+  ↓
+Frontend (React + Tailwind + Monaco + Markdown)
+  ↓
+FastAPI Backend
+  ├── API Layer
+  ├── Orchestrator
+  ├── Agent Registry
+  ├── Model Router
+  ├── GitHub Gateway
+  ├── Sandbox Runner
+  ├── Artifact Store
+  ├── Security/Policy Engine
+  └── Audit Logger
+  ↓
+PostgreSQL
+  ↓
+External providers
+  ├── NVIDIA API
+  ├── OpenRouter
+  └── Local NIM
+```
+
+## 3. Frontend
+
+The frontend is intentionally a premium developer-tool interface with a dark theme, sidebar navigation, task workspace, model/provider management, and real-time task timeline. It is implemented with:
+
+- React + Vite + TypeScript
+- Tailwind CSS
+- Lucide icons
+- Monaco editor shell
+- React Markdown viewer
+
+## 4. Backend
+
+The backend uses FastAPI and SQLAlchemy to expose a clean, testable API. It separates concerns into modules for:
+
+- API routes
+- Providers
+- Model registry
+- Agents
+- Orchestrator
+- GitHub gateway
+- Security policies
+- Artifacts
+- Audit
+
+## 5. Orchestration model
+
+The orchestrator is responsible for:
+
+- request analysis
+- plan generation
+- agent mapping
+- model selection
+- dependency ordering
+- task state updates
+- approval routing
+- final report creation
+
+The initial implementation provides a modular task planner and a registry-driven orchestration pattern that can evolve toward full graph execution.
+
+## 6. Provider abstractions
+
+Each provider implements a shared interface supporting connection testing, model listing, and generation calls. The design avoids hard-coding a single model for every task and keeps provider-specific logic isolated.
+
+Supported providers in the scaffold:
+
+- NVIDIA API
+- OpenRouter
+- Local NIM
+
+## 7. GitHub security design
+
+GitHub access is never given directly to the model. Instead, the backend exposes limited, audited internal tools through a gateway. Sensitive operations require approval and are subject to least-privilege checks.
+
+This matches the required architecture of using a GitHub App and short-lived installation credentials while keeping secrets off the model and out of the frontend.
+
+## 8. Sandbox model
+
+Execution is isolated by design. Each task uses a workspace path under `/workspaces/task_<id>/`, and all code execution is constrained to that environment rather than host-level command execution.
+
+## 9. Database model
+
+The project is designed around a PostgreSQL-backed schema with tables such as users, providers, models, agents, tasks, task_steps, agent_runs, approvals, artifacts, tool_calls, and audit_logs.
+
+The current scaffold uses SQLAlchemy models with a migration-friendly layout.
+
+## 10. Phase progression
+
+The repository is structured to support the required phases:
+
+- Phase 1: core API, provider interface, model registry, streaming-ready backend
+- Phase 2: orchestration, tasks, real-time states
+- Phase 3: GitHub gateway and approval flows
+- Phase 4: sandbox and coding workflows
+- Phase 5: image, vision, data, and research services
+- Phase 6: advanced routing, fallback logic, RAG, monitoring, and audit maturity
+
+## 11. Known limitations in this scaffold
+
+This is not a full production implementation of every stage. It is a solid foundation that includes:
+
+- API skeletons
+- modular architecture
+- provider interfaces
+- orchestrator planning
+- task state objects
+- dashboard UI shell
+- local dev configuration
+
+It does not yet implement full multi-agent execution, GitHub App lifecycle flows, RAG indexing, or production-grade sandbox isolation.
