@@ -1,25 +1,21 @@
-from __future__ import annotations
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
+from app.config import get_settings
 
 
-class TaskPlanner:
-    def __init__(self, prompt: str) -> None:
-        self.prompt = prompt
-
-    def create_plan(self) -> list[str]:
-        return [
-            "Connect repository",
-            "Analyze repository",
-            "Detect authentication issue",
-            "Fix backend",
-            "Improve frontend",
-            "Generate illustration",
-            "Run tests",
-            "Run security checks",
-            "Review changes",
-            "Request approval",
-            "Create PR",
-        ]
+class Base(DeclarativeBase):
+    pass
 
 
-def create_default_plan() -> list[str]:
-    return TaskPlanner("Analyze repository and fix authentication issue.").create_plan()
+settings = get_settings()
+engine = create_engine(settings.database_url, pool_pre_ping=True)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

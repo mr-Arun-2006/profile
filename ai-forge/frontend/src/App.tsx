@@ -31,3 +31,17 @@ def test_create_task() -> None:
     assert data["status"] == "CREATED"
     assert isinstance(data["plan"], list)
     assert len(data["plan"]) > 0
+
+
+def test_github_connect() -> None:
+    response = client.post("/api/github/connect")
+    assert response.status_code == 200
+    assert response.json()["status"] == "connected"
+
+
+def test_sandbox_create_and_run() -> None:
+    create_response = client.post("/api/sandbox/create", json={"task_id": "sandbox_test"})
+    assert create_response.status_code == 200
+    run_response = client.post("/api/sandbox/run", json={"task_id": "sandbox_test", "command": "pwd"})
+    assert run_response.status_code == 200
+    assert run_response.json()["status"] in {"success", "failed"}

@@ -11,7 +11,7 @@ class SecurityDecision:
 
 
 class PolicyEngine:
-    """Least-privilege policy checks for sensitive repository and deployment actions."""
+    """Least-privilege policy checks for sensitive operations."""
 
     SENSITIVE_ACTIONS = {
         "create_pull_request",

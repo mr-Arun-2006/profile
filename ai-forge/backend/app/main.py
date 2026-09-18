@@ -1,60 +1,57 @@
-from __future__ import annotations
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-import shlex
-import subprocess
-from dataclasses import dataclass
-from pathlib import Path
+:root {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  color: #e2e8f0;
+  background: #020817;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
+html, body, #root {
+  min-height: 100%;
+  margin: 0;
+}
 
-@dataclass
-class SandboxResult:
-    task_id: str
-    workspace: str
-    status: str
-    exit_code: int
-    logs: list[str]
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(34, 197, 94, 0.12), transparent 30%),
+    linear-gradient(180deg, #020817 0%, #0f172a 100%);
+}
 
+* {
+  box-sizing: border-box;
+}
 
-class SandboxRunner:
-    """Isolated workspace runner that prevents arbitrary host-level execution."""
+button, input, textarea, select {
+  font: inherit;
+}
 
-    def __init__(self, workspace_root: str = "/workspaces") -> None:
-        self.workspace_root = Path(workspace_root)
-        self.workspace_root.mkdir(parents=True, exist_ok=True)
+::-webkit-scrollbar {
+  width: 10px;
+}
 
-    def create_workspace(self, task_id: str) -> str:
-        workspace = self.workspace_root / f"task_{task_id}"
-        workspace.mkdir(parents=True, exist_ok=True)
-        return str(workspace)
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.7);
+}
 
-    def run(self, task_id: str, command: str) -> SandboxResult:
-        workspace = self.create_workspace(task_id)
-        safe_command = shlex.split(command)
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+}
 
-        completed = subprocess.run(
-            safe_command,
-            cwd=workspace,
-            capture_output=True,
-            text=True,
-            timeout=180,
-            env={
-                **__import__("os").environ,
-                "PYTHONPATH": workspace,
-                "WORKSPACE": workspace,
-            },
-        )
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
 
-        logs = []
-        if completed.stdout:
-            logs.append(completed.stdout.strip())
-        if completed.stderr:
-            logs.append(completed.stderr.strip())
-
-        status = "success" if completed.returncode == 0 else "failed"
-        return SandboxResult(
-            task_id=task_id,
-            workspace=workspace,
-            status=status,
-            exit_code=completed.returncode,
-            logs=logs,
-        )
+textarea {
+  scrollbar-width: thin;
+}

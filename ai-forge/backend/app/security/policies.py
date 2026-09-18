@@ -47,7 +47,7 @@ class GitHubGateway:
         ]
 
     def read_file(self, owner: str, repo: str, path: str, ref: str = "main") -> dict[str, Any]:
-        return {"path": path, "ref": ref, "content": f"# Example content for {path}\n# This is a secured backend-only read.", "truncated": False}
+        return {"path": path, "ref": ref, "content": f"# Example content for {path}\n# Secure backend-only read.", "truncated": False}
 
     def search_code(self, owner: str, repo: str, query: str, ref: str = "main") -> list[str]:
         return [f"{query} match in {owner}/{repo}"]

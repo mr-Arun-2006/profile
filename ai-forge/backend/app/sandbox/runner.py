@@ -1,3 +1,3 @@
-from app.sandbox.runner import SandboxRunner, SandboxResult
+from app.sandbox.runner import SandboxResult, SandboxRunner
 
-__all__ = ["SandboxRunner", "SandboxResult"]
+__all__ = ["SandboxResult", "SandboxRunner"]
